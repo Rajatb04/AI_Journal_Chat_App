@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Menu, LogOut, BookOpen, PenLine, Sparkles } from 'lucide-react';
+import { Send, Menu, LogOut, BookOpen, PenLine, Sparkles, MessageSquare } from 'lucide-react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { format } from 'date-fns';
@@ -59,7 +59,7 @@ function Journal() {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [journal?.messages]);
+  }, [journal?.messages, sending]);
   
   const sendMessage = async (content: string) => {
     if (!content.trim() || sending)
@@ -71,6 +71,7 @@ function Journal() {
       timestamp: new Date()
     };
     
+    // Immediately update UI with user message
     setJournal(prev => {
       if (!prev) return prev;
       return {
@@ -83,14 +84,36 @@ function Journal() {
     setMessage('');
     
     try {
+      // Send the message to backend
       const msgRes = await axios.post('/journal/message', {
         content: content.trim()
       });
+      
+      // Get AI response
       const aiRes = await axios.post('/ai/response', {
         message: content.trim()
       });
       
-      setJournal(msgRes.data);
+      // Create AI message object
+      const aiMessage: Message = {
+        sender: 'ai',
+        content: aiRes.data.response || "Sorry, I couldn't generate a response.",
+        timestamp: new Date()
+      };
+      
+      // Update journal with both messages
+      setJournal(prev => {
+        if (!prev) return prev;
+        // Make sure we don't duplicate the user message
+        const messages = [...prev.messages];
+        if (messages[messages.length - 1].sender !== 'ai') {
+          messages.push(aiMessage);
+        }
+        return {
+          ...prev,
+          messages: messages
+        };
+      });
     } catch (err) {
       console.error('Failed to send message', err);
       setError('Failed to send message. Please try again.');
@@ -117,11 +140,10 @@ function Journal() {
   }
 
   return (
-    <>
     <div className="flex min-h-screen bg-slate-50">
       <button 
         onClick={() => setMenuOpen(!menuOpen)}
-        className="md:hidden fixed top-4 left-4 z-30 p-2 bg-white rounded-full shadow-md"
+        className="fixed top-4 left-4 z-30 p-2 bg-white rounded-full shadow-md"
       >
         <Menu size={24} />
       </button>
@@ -132,7 +154,7 @@ function Journal() {
             initial={{ x: -300 }}
             animate={{ x: 0 }}
             exit={{ x: -300 }}
-            className="fixed inset-0 z-20 bg-black bg-opacity-50 md:bg-opacity-0 md:relative flex"
+            className="fixed inset-0 z-20 bg-black bg-opacity-50 md:bg-opacity-0 flex"
             onClick={() => setMenuOpen(false)}
           >
             <div 
@@ -188,121 +210,108 @@ function Journal() {
         )}
       </AnimatePresence>
       
-      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-4 md:px-8 py-6">
-
+      {/* Main content area with fixed header, scrollable messages, and fixed input */}
+      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-4 md:px-8 h-screen">
+        {/* Fixed header */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 text-center"
+          className="py-6 bg-slate-50 z-10"
         >
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 text-center">
             {format(new Date(), "EEEE, MMMM d, yyyy")}
           </h1>
-          <p className="text-gray-600 mt-1">Your daily reflection space</p>
+          <p className="text-gray-600 mt-1 text-center">Your daily reflection space</p>
         </motion.div>
         
-        <div className="flex-1 bg-white rounded-t-xl shadow-sm overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {journal?.messages.map((msg, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(0.1 * index, 1) }}
-                className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[80%] md:max-w-[70%] rounded-2xl p-4 ${
-                    msg.sender === 'user'
-                      ? 'bg-blue-600 text-white rounded-tr-none'
-                      : 'bg-gray-100 text-gray-800 rounded-tl-none'
-                  }`}
+        {/* Fixed layout container */}
+        <div className="flex flex-col flex-1 bg-white rounded-t-xl shadow-sm overflow-hidden">
+          {/* Only this area should scroll */}
+          <div className="flex-1 overflow-y-auto" id="messages-container">
+            <div className="p-4 space-y-4">
+              {journal?.messages.map((msg, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(0.1 * index, 1) }}
+                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-                </div>
-              </motion.div>
-            ))}
-            
-            {sending && (
-              <div className="flex justify-start">
-                <div className="bg-gray-100 rounded-2xl rounded-tl-none p-4">
-                  <div className="flex space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"></div>
-                    <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                    <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                  <div
+                    className={`max-w-[80%] md:max-w-[70%] rounded-2xl p-4 ${
+                      msg.sender === 'user'
+                        ? 'bg-blue-600 text-white rounded-tr-none'
+                        : 'bg-gray-100 text-gray-800 rounded-tl-none'
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                  </div>
+                </motion.div>
+              ))}
+              
+              {sending && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 rounded-2xl rounded-tl-none p-4">
+                    <div className="flex space-x-2">
+                      <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"></div>
+                      <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-            
-            <div ref={messagesEndRef} />
+              )}
+              
+              <div ref={messagesEndRef} className="h-1" />
+            </div>
           </div>
           
-          <div className="px-4 py-3 border-t border-gray-100">
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {quickPrompts.map((prompt, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleQuickPrompt(prompt.text)}
-                  disabled={sending}
-                  className="flex items-center gap-2 whitespace-nowrap px-4 py-2 bg-blue-50 hover:bg-blue-100 rounded-full text-blue-700 text-sm font-medium transition-colors"
-                >
-                  {prompt.icon}
-                  {prompt.text}
-                </button>
-              ))}
-            </div>
-          </div>
-          <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
-            {error && (
-              <div className="mb-3 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
-                {error}
+          {/* Fixed quick prompts and input area */}
+          <div className="bg-white border-t border-gray-100">
+            <div className="px-4 py-3">
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {quickPrompts.map((prompt, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleQuickPrompt(prompt.text)}
+                    disabled={sending}
+                    className="flex items-center gap-2 whitespace-nowrap px-4 py-2 bg-blue-50 hover:bg-blue-100 rounded-full text-blue-700 text-sm font-medium transition-colors"
+                  >
+                    {prompt.icon}
+                    {prompt.text}
+                  </button>
+                ))}
               </div>
-            )}
-            
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Type your thoughts here..."
-                className="flex-1 border border-gray-300 rounded-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                disabled={sending}
-              />
-              <button
-                type="submit"
-                disabled={!message.trim() || sending}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-full p-3 transition"
-              >
-                <Send size={20} />
-              </button>
             </div>
-          </form>
+            <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
+              {error && (
+                <div className="mb-3 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+                  {error}
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Type your thoughts here..."
+                  className="flex-1 border border-gray-300 rounded-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={sending}
+                />
+                <button
+                  type="submit"
+                  disabled={!message.trim() || sending}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-full p-3 transition"
+                >
+                  <Send size={20} />
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
-    </>
   );
 }
 
 export default Journal;
-
-function MessageSquare({ size = 24, className = "" }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-    </svg>
-  );
-  
-}
