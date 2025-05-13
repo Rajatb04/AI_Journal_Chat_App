@@ -6,7 +6,7 @@ import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { format, parseISO } from 'date-fns';
 
-// Types
+
 interface JournalSummary {
   _id: string;
   date: string;
@@ -22,7 +22,6 @@ function History() {
   
   const { user, logout } = useContext(AuthContext);
   
-  // Fetch journal history on load
   useEffect(() => {
     const fetchJournals = async () => {
       try {
@@ -39,7 +38,6 @@ function History() {
     fetchJournals();
   }, []);
   
-  // Group journals by month
   const groupedJournals = journals.reduce((groups, journal) => {
     const date = parseISO(journal.date);
     const monthYear = format(date, 'MMMM yyyy');
@@ -62,15 +60,12 @@ function History() {
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      {/* Mobile Menu Button */}
       <button 
         onClick={() => setMenuOpen(!menuOpen)}
         className="md:hidden fixed top-4 left-4 z-30 p-2 bg-white rounded-full shadow-md"
       >
         <Menu size={24} />
       </button>
-      
-      {/* Sidebar */}
       <motion.div
         initial={{ x: menuOpen ? 0 : -300 }}
         animate={{ x: menuOpen ? 0 : -300 }}
@@ -128,9 +123,8 @@ function History() {
         </div>
       </motion.div>
       
-      {/* Main Content */}
       <div className="flex-1 max-w-4xl mx-auto w-full px-4 md:px-8 py-6">
-        {/* Header */}
+
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -140,7 +134,7 @@ function History() {
           <p className="text-gray-600 mt-1">View and revisit your past reflections</p>
         </motion.div>
         
-        {/* Journal List */}
+
         <div className="bg-white rounded-xl shadow-sm p-6">
           {error && (
             <div className="mb-6 text-sm text-red-600 bg-red-50 p-4 rounded-lg">
@@ -219,7 +213,6 @@ function History() {
 
 export default History;
 
-// Add the missing MessageSquare component
 function MessageSquare({ size = 24, className = "" }) {
   return (
     <svg

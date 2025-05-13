@@ -40,7 +40,6 @@ const getGeminiModel = () => {
   return genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-001" });
 };
 
-// System prompt for journaling assistant
 const SYSTEM_PROMPT = `You are an empathetic AI journal assistant. Your job is to have a supportive conversation with the user about their day, helping them reflect on their experiences, emotions, and thoughts. 
 
 Follow these guidelines:
@@ -90,7 +89,6 @@ router.post('/response', async (req, res) => {
       parts: [{ text: msg.content }]
     }));
     
-    // Initialize the chat
     const model = getGeminiModel();
     const chat = model.startChat({
       history: chatHistory,
@@ -103,11 +101,9 @@ router.post('/response', async (req, res) => {
       systemInstruction: SYSTEM_PROMPT,
     });
     
-    // Generate AI response
     const result = await chat.sendMessage(message);
     const aiResponse = result.response.text();
     
-    // Save AI response to journal
     journal.messages.push({
       sender: 'ai',
       content: aiResponse
@@ -129,7 +125,6 @@ router.post('/summarize', async (req, res) => {
   try {
     const today = new Date();
     
-    // Find today's journal
     const journal = await Journal.findOne({
       user: req.user.id,
       date: {
@@ -144,20 +139,16 @@ router.post('/summarize', async (req, res) => {
       });
     }
     
-    // Extract conversation content
     const conversationText = journal.messages
       .map(msg => `${msg.sender === 'user' ? 'User' : 'AI'}: ${msg.content}`)
       .join('\n\n');
     
-    // Generate summary prompt
     const summaryPrompt = `Based on this journal conversation, create a thoughtful 2-3 sentence summary of the user's day that highlights key themes, emotions, and insights:\n\n${conversationText}`;
     
-    // Generate summary
     const model = getGeminiModel();
     const result = await model.generateContent(summaryPrompt);
     const summary = result.response.text();
     
-    // Save summary to journal
     journal.summary = summary;
     await journal.save();
     

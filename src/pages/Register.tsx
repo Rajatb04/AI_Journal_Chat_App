@@ -19,7 +19,6 @@ function Register() {
     e.preventDefault();
     setError('');
     
-    // Password validation
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;

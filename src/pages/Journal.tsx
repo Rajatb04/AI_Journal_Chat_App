@@ -6,7 +6,6 @@ import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { format } from 'date-fns';
 
-// Types
 interface Message {
   _id?: string;
   sender: 'user' | 'ai';
@@ -40,7 +39,6 @@ function Journal() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user, logout } = useContext(AuthContext);
   
-  // Fetch today's journal on load
   useEffect(() => {
     const fetchTodayJournal = async () => {
       try {
@@ -57,7 +55,6 @@ function Journal() {
     fetchTodayJournal();
   }, []);
   
-  // Scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -65,9 +62,9 @@ function Journal() {
   }, [journal?.messages]);
   
   const sendMessage = async (content: string) => {
-    if (!content.trim() || sending) return;
-    
-    // Add user message to UI immediately
+    if (!content.trim() || sending)
+       return;
+
     const userMessage: Message = {
       sender: 'user',
       content: content.trim(),
@@ -86,17 +83,13 @@ function Journal() {
     setMessage('');
     
     try {
-      // Send message to backend
       const msgRes = await axios.post('/journal/message', {
         content: content.trim()
       });
-      
-      // Get AI response
       const aiRes = await axios.post('/ai/response', {
         message: content.trim()
       });
       
-      // Update journal with latest data including AI response
       setJournal(msgRes.data);
     } catch (err) {
       console.error('Failed to send message', err);
@@ -124,8 +117,8 @@ function Journal() {
   }
 
   return (
+    <>
     <div className="flex min-h-screen bg-slate-50">
-      {/* Mobile Menu Button */}
       <button 
         onClick={() => setMenuOpen(!menuOpen)}
         className="md:hidden fixed top-4 left-4 z-30 p-2 bg-white rounded-full shadow-md"
@@ -133,7 +126,6 @@ function Journal() {
         <Menu size={24} />
       </button>
       
-      {/* Sidebar */}
       <AnimatePresence>
         {menuOpen && (
           <motion.div
@@ -196,9 +188,8 @@ function Journal() {
         )}
       </AnimatePresence>
       
-      {/* Main Content */}
       <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-4 md:px-8 py-6">
-        {/* Header */}
+
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -210,7 +201,6 @@ function Journal() {
           <p className="text-gray-600 mt-1">Your daily reflection space</p>
         </motion.div>
         
-        {/* Messages Container */}
         <div className="flex-1 bg-white rounded-t-xl shadow-sm overflow-hidden flex flex-col">
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {journal?.messages.map((msg, index) => (
@@ -248,7 +238,6 @@ function Journal() {
             <div ref={messagesEndRef} />
           </div>
           
-          {/* Quick Prompts */}
           <div className="px-4 py-3 border-t border-gray-100">
             <div className="flex gap-2 overflow-x-auto pb-2">
               {quickPrompts.map((prompt, index) => (
@@ -264,8 +253,6 @@ function Journal() {
               ))}
             </div>
           </div>
-          
-          {/* Message Input */}
           <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
             {error && (
               <div className="mb-3 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
@@ -294,12 +281,12 @@ function Journal() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
 export default Journal;
 
-// Add the missing MessageSquare component
 function MessageSquare({ size = 24, className = "" }) {
   return (
     <svg
@@ -317,4 +304,5 @@ function MessageSquare({ size = 24, className = "" }) {
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
     </svg>
   );
+  
 }

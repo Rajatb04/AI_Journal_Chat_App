@@ -28,7 +28,6 @@ router.get('/today', async (req, res) => {
   try {
     const today = new Date();
     
-    // Find journal for today
     let journal = await Journal.findOne({
       user: req.user.id,
       date: {
@@ -37,7 +36,6 @@ router.get('/today', async (req, res) => {
       }
     });
     
-    // If no journal exists for today, create one
     if (!journal) {
       journal = new Journal({
         user: req.user.id,
@@ -97,7 +95,6 @@ router.post('/message', async (req, res) => {
   try {
     const today = new Date();
     
-    // Find or create today's journal
     let journal = await Journal.findOne({
       user: req.user.id,
       date: {
@@ -117,7 +114,6 @@ router.post('/message', async (req, res) => {
       });
     }
     
-    // Add new user message
     journal.messages.push({
       sender: 'user',
       content

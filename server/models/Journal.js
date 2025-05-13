@@ -38,7 +38,6 @@ const journalSchema = new mongoose.Schema({
   }
 });
 
-// Add index for better query performance
 journalSchema.index({ user: 1, date: -1 });
 
 const Journal = mongoose.model('Journal', journalSchema);
