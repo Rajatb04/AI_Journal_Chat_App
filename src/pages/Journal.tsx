@@ -174,10 +174,59 @@ function Journal() {
     <div className="flex min-h-screen bg-slate-50">
       <button 
         onClick={() => setMenuOpen(!menuOpen)}
-        className="md:hidden fixed top-4 left-4 z-30 p-2 bg-white rounded-full shadow-md"
+        className="fixed top-4 left-4 z-30 p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors md:hidden"
       >
         <Menu size={24} />
       </button>
+      
+      <div className="hidden md:block w-72 bg-white min-h-screen flex-shrink-0 shadow-lg">
+        <div className="p-5 flex flex-col h-full">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="p-2 bg-blue-100 rounded-full">
+              <MessageSquare size={24} className="text-blue-600" />
+            </div>
+            <h1 className="text-xl font-bold">AI Journal</h1>
+          </div>
+          
+          <nav className="flex-1">
+            <Link
+              to="/journal"
+              className="flex items-center gap-3 p-3 text-gray-700 hover:bg-blue-50 rounded-lg font-medium mb-2 bg-blue-50 text-blue-700"
+            >
+              <PenLine size={20} />
+              Today's Journal
+            </Link>
+            
+            <Link
+              to="/history"
+              className="flex items-center gap-3 p-3 text-gray-700 hover:bg-blue-50 rounded-lg font-medium"
+            >
+              <BookOpen size={20} />
+              Journal History
+            </Link>
+          </nav>
+          
+          <div className="border-t border-gray-200 pt-4 mt-4">
+            <div className="flex items-center gap-3 px-3 mb-5">
+              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
+                {user?.username.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p className="font-medium">{user?.username}</p>
+                <p className="text-sm text-gray-500">{user?.email}</p>
+              </div>
+            </div>
+            
+            <button
+              onClick={logout}
+              className="flex w-full items-center gap-2 p-3 text-red-600 hover:bg-red-50 rounded-lg font-medium"
+            >
+              <LogOut size={20} />
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
       
       <AnimatePresence>
         {menuOpen && (
@@ -185,7 +234,7 @@ function Journal() {
             initial={{ x: -300 }}
             animate={{ x: 0 }}
             exit={{ x: -300 }}
-            className="fixed inset-0 z-20 bg-black bg-opacity-50 md:bg-opacity-0 flex"
+            className="fixed inset-0 z-20 bg-black bg-opacity-50 md:hidden flex"
             onClick={() => setMenuOpen(false)}
           >
             <div 
