@@ -370,6 +370,7 @@ function Journal() {
                       {prompt.text}
                     </button>
                   ))}
+                  
                 </div>
               </div>
               <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
