@@ -33,6 +33,11 @@ function App() {
             <Journal />
           </ProtectedRoute>
         } />
+        <Route path="/journal/:id" element={
+          <ProtectedRoute>
+            <Journal />
+          </ProtectedRoute>
+        } />
         <Route path="/history" element={
           <ProtectedRoute>
             <History />
