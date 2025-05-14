@@ -8,34 +8,8 @@ dotenv.config();
 
 const router = express.Router();
 
-// Initialize Google Generative AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// async function listModels() {
-//   try {
-//     // The correct way to list models using the REST API
-//     const response = await fetch('https://generativelanguage.googleapis.com/v1/models', {
-//       headers: {
-//         'x-goog-api-key': process.env.GEMINI_API_KEY
-//       }
-//     });
-    
-//     if (!response.ok) {
-//       throw new Error(`HTTP error! Status: ${response.status}`);
-//     }
-    
-//     const data = await response.json();
-//     console.log("Available models:", data);
-//     return data;
-//   } catch (error) {
-//     console.error("Error listing models:", error);
-//     throw error;
-//   }
-// }
-
-// listModels();
-
-// Helper function to get model
 const getGeminiModel = () => {
   return genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-001" });
 };
@@ -57,9 +31,12 @@ If the user wants specific guidance, they can use these commands:
 
 Remember that you're having a conversation to help someone journal about their day.`;
 
-// @route   POST api/ai/response
-// @desc    Get AI response to user message
-// @access  Private
+const SENTIMENT_PROMPT = `Analyze the following journal entry and determine the user's primary mood. Choose one of these moods: happy, neutral, sad, anxious, excited, tired, stressed, calm.
+
+Only respond with a single word from the above list. Base your analysis on the overall tone and content of the messages.
+
+Journal entry:`;
+
 router.post('/response', async (req, res) => {
   try {
     const { message } = req.body;
@@ -70,7 +47,6 @@ router.post('/response', async (req, res) => {
     
     const today = new Date();
     
-    // Find today's journal
     let journal = await Journal.findOne({
       user: req.user.id,
       date: {
@@ -83,7 +59,6 @@ router.post('/response', async (req, res) => {
       return res.status(404).json({ message: 'Journal not found for today' });
     }
     
-    // Format conversation history for Gemini
     const chatHistory = journal.messages.map(msg => ({
       role: msg.sender === 'user' ? 'user' : 'model',
       parts: [{ text: msg.content }]
@@ -104,6 +79,20 @@ router.post('/response', async (req, res) => {
     const result = await chat.sendMessage(message);
     const aiResponse = result.response.text();
     
+    // Analyze sentiment after every 3 user messages
+    if (journal.messages.filter(m => m.sender === 'user').length % 3 === 0) {
+      const conversationText = journal.messages
+        .map(msg => `${msg.sender}: ${msg.content}`)
+        .join('\n');
+      
+      const sentimentResult = await model.generateContent(SENTIMENT_PROMPT + '\n' + conversationText);
+      const mood = sentimentResult.response.text().toLowerCase().trim();
+      
+      if (['happy', 'neutral', 'sad', 'anxious', 'excited', 'tired', 'stressed', 'calm'].includes(mood)) {
+        journal.mood = mood;
+      }
+    }
+    
     journal.messages.push({
       sender: 'ai',
       content: aiResponse
@@ -111,16 +100,13 @@ router.post('/response', async (req, res) => {
     
     await journal.save();
     
-    res.json({ response: aiResponse });
+    res.json({ response: aiResponse, mood: journal.mood });
   } catch (err) {
     console.error('AI response error:', err);
     res.status(500).json({ message: 'Failed to get AI response', error: err.message });
   }
 });
 
-// @route   POST api/ai/summarize
-// @desc    Generate a summary of today's journal
-// @access  Private
 router.post('/summarize', async (req, res) => {
   try {
     const today = new Date();
