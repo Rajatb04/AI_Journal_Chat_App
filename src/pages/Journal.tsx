@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Menu, LogOut, BookOpen, PenLine, Sparkles, MessageSquare } from 'lucide-react';
+import { Send, Menu, LogOut, BookOpen, PenLine, Sparkles, MessageSquare, Calendar } from 'lucide-react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { format } from 'date-fns';
@@ -28,6 +28,17 @@ const quickPrompts = [
   { text: "What can I improve this week?", icon: <PenLine size={14} /> }
 ];
 
+const moodEmojis: Record<string, string> = {
+  happy: '😊',
+  neutral: '😐',
+  sad: '😢',
+  anxious: '😰',
+  excited: '🤩',
+  tired: '😴',
+  stressed: '😫',
+  calm: '😌'
+};
+
 function Journal() {
   const [journal, setJournal] = useState<JournalEntry | null>(null);
   const [message, setMessage] = useState('');
@@ -35,6 +46,7 @@ function Journal() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [summarizing, setSummarizing] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user, logout } = useContext(AuthContext);
@@ -61,9 +73,23 @@ function Journal() {
     }
   }, [journal?.messages, sending]);
   
+  const generateSummary = async () => {
+    if (summarizing) return;
+    
+    setSummarizing(true);
+    try {
+      const res = await axios.post('/ai/summarize');
+      setJournal(prev => prev ? { ...prev, summary: res.data.summary } : prev);
+    } catch (err) {
+      console.error('Failed to generate summary', err);
+      setError('Failed to generate summary. Please try again.');
+    } finally {
+      setSummarizing(false);
+    }
+  };
+  
   const sendMessage = async (content: string) => {
-    if (!content.trim() || sending)
-       return;
+    if (!content.trim() || sending) return;
 
     const userMessage: Message = {
       sender: 'user',
@@ -71,7 +97,6 @@ function Journal() {
       timestamp: new Date()
     };
     
-    // Immediately update UI with user message
     setJournal(prev => {
       if (!prev) return prev;
       return {
@@ -84,36 +109,36 @@ function Journal() {
     setMessage('');
     
     try {
-      // Send the message to backend
       const msgRes = await axios.post('/journal/message', {
         content: content.trim()
       });
       
-      // Get AI response
       const aiRes = await axios.post('/ai/response', {
         message: content.trim()
       });
       
-      // Create AI message object
       const aiMessage: Message = {
         sender: 'ai',
         content: aiRes.data.response || "Sorry, I couldn't generate a response.",
         timestamp: new Date()
       };
       
-      // Update journal with both messages
       setJournal(prev => {
         if (!prev) return prev;
-        // Make sure we don't duplicate the user message
         const messages = [...prev.messages];
         if (messages[messages.length - 1].sender !== 'ai') {
           messages.push(aiMessage);
         }
         return {
           ...prev,
-          messages: messages
+          messages,
+          mood: aiRes.data.mood || prev.mood
         };
       });
+      
+      if (content.toLowerCase() === 'summarize my day') {
+        await generateSummary();
+      }
     } catch (err) {
       console.error('Failed to send message', err);
       setError('Failed to send message. Please try again.');
@@ -210,24 +235,34 @@ function Journal() {
         )}
       </AnimatePresence>
       
-      {/* Main content area with fixed header, scrollable messages, and fixed input */}
       <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-4 md:px-8 h-screen">
-        {/* Fixed header */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="py-6 bg-slate-50 z-10"
         >
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 text-center">
-            {format(new Date(), "EEEE, MMMM d, yyyy")}
-          </h1>
+          <div className="flex items-center justify-center gap-3">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
+              {format(new Date(), "EEEE, MMMM d, yyyy")}
+            </h1>
+            {journal?.mood && (
+              <span className="text-2xl" title={`Current mood: ${journal.mood}`}>
+                {moodEmojis[journal.mood]}
+              </span>
+            )}
+          </div>
           <p className="text-gray-600 mt-1 text-center">Your daily reflection space</p>
         </motion.div>
         
-        {/* Fixed layout container */}
         <div className="flex flex-col flex-1 bg-white rounded-t-xl shadow-sm overflow-hidden">
-          {/* Only this area should scroll */}
           <div className="flex-1 overflow-y-auto" id="messages-container">
+            {journal?.summary && (
+              <div className="p-4 bg-blue-50 border-b border-blue-100">
+                <h3 className="font-medium text-blue-800 mb-1">Today's Summary</h3>
+                <p className="text-blue-700 text-sm">{journal.summary}</p>
+              </div>
+            )}
+            
             <div className="p-4 space-y-4">
               {journal?.messages.map((msg, index) => (
                 <motion.div
@@ -265,7 +300,6 @@ function Journal() {
             </div>
           </div>
           
-          {/* Fixed quick prompts and input area */}
           <div className="bg-white border-t border-gray-100">
             <div className="px-4 py-3">
               <div className="flex gap-2 overflow-x-auto pb-2">
