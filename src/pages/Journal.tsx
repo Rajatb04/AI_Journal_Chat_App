@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useContext } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Menu, LogOut, BookOpen, PenLine, Sparkles, MessageSquare, Calendar } from 'lucide-react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 interface Message {
   _id?: string;
@@ -50,12 +50,18 @@ function Journal() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user, logout } = useContext(AuthContext);
+  const { id } = useParams();
   
   useEffect(() => {
-    const fetchTodayJournal = async () => {
+    const fetchJournal = async () => {
       try {
-        const res = await axios.get('/journal/today');
-        setJournal(res.data);
+        let response;
+        if (id) {
+          response = await axios.get(`/journal/${id}`);
+        } else {
+          response = await axios.get('/journal/today');
+        }
+        setJournal(response.data);
       } catch (err) {
         console.error('Failed to fetch journal', err);
         setError('Failed to load your journal. Please try again.');
@@ -64,8 +70,8 @@ function Journal() {
       }
     };
     
-    fetchTodayJournal();
-  }, []);
+    fetchJournal();
+  }, [id]);
   
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -89,7 +95,7 @@ function Journal() {
   };
   
   const sendMessage = async (content: string) => {
-    if (!content.trim() || sending) return;
+    if (!content.trim() || sending || id) return;
 
     const userMessage: Message = {
       sender: 'user',
@@ -168,7 +174,7 @@ function Journal() {
     <div className="flex min-h-screen bg-slate-50">
       <button 
         onClick={() => setMenuOpen(!menuOpen)}
-        className="fixed top-4 left-4 z-30 p-2 bg-white rounded-full shadow-md"
+        className="md:hidden fixed top-4 left-4 z-30 p-2 bg-white rounded-full shadow-md"
       >
         <Menu size={24} />
       </button>
@@ -243,7 +249,7 @@ function Journal() {
         >
           <div className="flex items-center justify-center gap-3">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
-              {format(new Date(), "EEEE, MMMM d, yyyy")}
+              {journal ? format(new Date(journal.date), "EEEE, MMMM d, yyyy") : format(new Date(), "EEEE, MMMM d, yyyy")}
             </h1>
             {journal?.mood && (
               <span className="text-2xl" title={`Current mood: ${journal.mood}`}>
@@ -300,48 +306,50 @@ function Journal() {
             </div>
           </div>
           
-          <div className="bg-white border-t border-gray-100">
-            <div className="px-4 py-3">
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {quickPrompts.map((prompt, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleQuickPrompt(prompt.text)}
-                    disabled={sending}
-                    className="flex items-center gap-2 whitespace-nowrap px-4 py-2 bg-blue-50 hover:bg-blue-100 rounded-full text-blue-700 text-sm font-medium transition-colors"
-                  >
-                    {prompt.icon}
-                    {prompt.text}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
-              {error && (
-                <div className="mb-3 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
-                  {error}
+          {!id && (
+            <div className="bg-white border-t border-gray-100">
+              <div className="px-4 py-3">
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {quickPrompts.map((prompt, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleQuickPrompt(prompt.text)}
+                      disabled={sending}
+                      className="flex items-center gap-2 whitespace-nowrap px-4 py-2 bg-blue-50 hover:bg-blue-100 rounded-full text-blue-700 text-sm font-medium transition-colors"
+                    >
+                      {prompt.icon}
+                      {prompt.text}
+                    </button>
+                  ))}
                 </div>
-              )}
-              
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Type your thoughts here..."
-                  className="flex-1 border border-gray-300 rounded-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  disabled={sending}
-                />
-                <button
-                  type="submit"
-                  disabled={!message.trim() || sending}
-                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-full p-3 transition"
-                >
-                  <Send size={20} />
-                </button>
               </div>
-            </form>
-          </div>
+              <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
+                {error && (
+                  <div className="mb-3 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+                    {error}
+                  </div>
+                )}
+                
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Type your thoughts here..."
+                    className="flex-1 border border-gray-300 rounded-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={sending}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!message.trim() || sending}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-full p-3 transition"
+                  >
+                    <Send size={20} />
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
         </div>
       </div>
     </div>

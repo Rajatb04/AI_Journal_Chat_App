@@ -1,11 +1,10 @@
 import { useState, useEffect, useContext } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogOut, Menu, BookOpen, PenLine, Calendar } from 'lucide-react';
+import { LogOut, Menu, BookOpen, PenLine, Calendar, MessageSquare } from 'lucide-react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { format, parseISO } from 'date-fns';
-
 
 interface JournalSummary {
   _id: string;
@@ -21,6 +20,7 @@ function History() {
   const [menuOpen, setMenuOpen] = useState(false);
   
   const { user, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
   
   useEffect(() => {
     const fetchJournals = async () => {
@@ -50,6 +50,18 @@ function History() {
     return groups;
   }, {} as Record<string, JournalSummary[]>);
 
+  const handleViewEntry = async (journalId: string) => {
+    try {
+      const res = await axios.get(`/journal/${journalId}`);
+      // Store the journal data in localStorage
+      localStorage.setItem('selectedJournal', JSON.stringify(res.data));
+      navigate(`/journal/${journalId}`);
+    } catch (err) {
+      console.error('Failed to fetch journal entry', err);
+      setError('Failed to load journal entry. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -66,6 +78,7 @@ function History() {
       >
         <Menu size={24} />
       </button>
+      
       <motion.div
         initial={{ x: menuOpen ? 0 : -300 }}
         animate={{ x: menuOpen ? 0 : -300 }}
@@ -124,7 +137,6 @@ function History() {
       </motion.div>
       
       <div className="flex-1 max-w-4xl mx-auto w-full px-4 md:px-8 py-6">
-
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -134,7 +146,6 @@ function History() {
           <p className="text-gray-600 mt-1">View and revisit your past reflections</p>
         </motion.div>
         
-
         <div className="bg-white rounded-xl shadow-sm p-6">
           {error && (
             <div className="mb-6 text-sm text-red-600 bg-red-50 p-4 rounded-lg">
@@ -189,15 +200,15 @@ function History() {
                           {journal.summary || "No summary available"}
                         </p>
                         
-                        <Link
-                          to={`/journal/${journal._id}`}
+                        <button
+                          onClick={() => handleViewEntry(journal._id)}
                           className="mt-3 inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm font-medium"
                         >
                           View entry
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M9 6L15 12L9 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
-                        </Link>
+                        </button>
                       </motion.div>
                     ))}
                   </div>
@@ -212,22 +223,3 @@ function History() {
 }
 
 export default History;
-
-function MessageSquare({ size = 24, className = "" }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-    </svg>
-  );
-}
