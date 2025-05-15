@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
 
   // Configure axios defaults
-  axios.defaults.baseURL = 'http://localhost:3000/api';
+  axios.defaults.baseURL = 'https://ai-journal-chat-app.onrender.com/api';
   
   // Set auth token for all requests if it exists
   useEffect(() => {
